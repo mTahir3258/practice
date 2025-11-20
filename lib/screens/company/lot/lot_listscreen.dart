@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:inward_outward_management/providers/lot_provider.dart';
 import 'package:inward_outward_management/screens/company/lot/add_edit_lotscreen.dart';
+import 'package:inward_outward_management/utils/app_colors.dart';
+import 'package:inward_outward_management/utils/responsive.dart';
+import 'package:inward_outward_management/widgets/app_scaffold.dart';
 import 'package:provider/provider.dart';
-import '../../../../../utils/responsive.dart';
 
 class LotListScreen extends StatefulWidget {
   const LotListScreen({super.key});
@@ -27,25 +29,23 @@ class _LotListScreenState extends State<LotListScreen> {
     final prov = Provider.of<LotProvider>(context);
     final r = Responsive(context);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Lot Master"),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        foregroundColor: Colors.black,
-      ),
-
+    return AppScaffold(
+      title: 'Lot Master',
       floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.green,
-        child: const Icon(Icons.add),
+        backgroundColor: AppColors.primaryGreen,
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => AddEditLotScreen()),
+            MaterialPageRoute(
+              builder: (_) => ChangeNotifierProvider.value(
+                value: prov,
+                child: const AddEditLotScreen(),
+              ),
+            ),
           );
         },
+        child: const Icon(Icons.add, color: AppColors.textDark),
       ),
-
       body: prov.loading
           ? const Center(child: CircularProgressIndicator())
           : ListView.builder(
@@ -54,47 +54,47 @@ class _LotListScreenState extends State<LotListScreen> {
               itemBuilder: (context, i) {
                 final lot = prov.lots[i];
 
-                return Container(
+                return Card(
+                  color: AppColors.greyBackground,
                   margin: EdgeInsets.only(bottom: r.hp(1.5)),
-                  padding: EdgeInsets.all(r.wp(3)),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-
                   child: ListTile(
                     title: Text(
-                      "Lot: ${lot['lotName']}",
+                      'Lot: ${lot['lotName']}',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: r.sp(12),
+                        color: AppColors.textLight,
                       ),
                     ),
                     subtitle: Text(
-                      "Material: ${lot['materialName']}\n"
-                      "Boxes: ${lot['boxCount']}  |  Weight: ${lot['weight']} kg",
+                      'Material: ${lot['materialName']}\n'
+                      'Boxes: ${lot['boxCount']}  |  Weight: ${lot['weight']} kg',
+                      style: const TextStyle(color: AppColors.textLight),
                     ),
-
                     trailing: PopupMenuButton(
+                      color: AppColors.primaryDark,
+                      itemBuilder: (_) => const [
+                        PopupMenuItem(value: 'edit', child: Text('Edit')),
+                        PopupMenuItem(
+                          value: 'delete',
+                          child: Text('Delete'),
+                        ),
+                      ],
                       onSelected: (value) {
-                        if (value == "edit") {
+                        if (value == 'edit') {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => AddEditLotScreen(existing: lot),
+                              builder: (_) => ChangeNotifierProvider.value(
+                                value: prov,
+                                child: AddEditLotScreen(existing: lot),
+                              ),
                             ),
                           );
                         } else {
                           prov.deleteLot(lot['lotId']);
                         }
                       },
-                      itemBuilder: (_) => [
-                        const PopupMenuItem(value: "edit", child: Text("Edit")),
-                        const PopupMenuItem(
-                          value: "delete",
-                          child: Text("Delete"),
-                        ),
-                      ],
                     ),
                   ),
                 );

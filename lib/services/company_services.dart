@@ -23,6 +23,12 @@ class CompanyService {
   CollectionReference<Map<String, dynamic>> receipts(String companyId) =>
       companies().doc(companyId).collection('advance_receipts');
 
+  // Standalone intimations (submitted without a prior material request)
+  CollectionReference<Map<String, dynamic>> standaloneIntimations(
+    String companyId,
+  ) =>
+      companies().doc(companyId).collection('standalone_intimations');
+
   // Global collections for workflow
   CollectionReference<Map<String, dynamic>> supplierRequests() =>
       _firestore.collection('supplier_requests');
@@ -58,9 +64,25 @@ class CompanyService {
     String companyId,
     Map<String, dynamic> requestMap,
   ) async {
+    // Best-effort: fetch company name from users collection
+    String companyName = '';
+    try {
+      final userDoc =
+          await _firestore.collection('users').doc(companyId).get();
+      if (userDoc.exists) {
+        final data = userDoc.data();
+        if (data != null) {
+          companyName = data['name']?.toString() ?? '';
+        }
+      }
+    } catch (_) {
+      // ignore, fallback to empty name
+    }
+
     final doc = {
       ...requestMap,
       'companyId': companyId,
+      'companyName': companyName,
       'status': 'requested',
       'createdAt': DateTime.now().millisecondsSinceEpoch,
     };
@@ -71,15 +93,25 @@ class CompanyService {
   Future<List<Map<String, dynamic>>> getMaterialRequests(
     String companyId,
   ) async {
-    final q = await supplierRequests()
-        .where('companyId', isEqualTo: companyId)
-        .orderBy('createdAt', descending: true)
-        .get();
+    Query<Map<String, dynamic>> query = supplierRequests();
+    // If companyId is known, filter by it. If it's empty (older data / setup),
+    // fall back to loading all requests so that the UI still shows something.
+    if (companyId.isNotEmpty) {
+      query = query.where('companyId', isEqualTo: companyId);
+    }
+
+    // Removed orderBy('createdAt') to avoid requiring a composite index.
+    // Firestore will still return documents (unordered) which is fine for UI.
+    final q = await query.get();
     return q.docs.map((d) {
       final map = Map<String, dynamic>.from(d.data());
       map['id'] = d.id;
       return map;
     }).toList();
+  }
+
+  Future<void> deleteMaterialRequest(String requestId) async {
+    await supplierRequests().doc(requestId).delete();
   }
 
   Future<void> addSupplierIntimation(
@@ -89,11 +121,44 @@ class CompanyService {
     final sub = supplierRequests()
         .doc(requestId)
         .collection('supplier_intimations');
+
+    // Best-effort: ensure supplierName is present on the intimation by
+    // looking it up from the users collection using supplierId (uid).
+    String supplierName = (intimation['supplierName'] ?? '').toString();
+    final supplierId = (intimation['supplierId'] ?? '').toString();
+    if (supplierName.isEmpty && supplierId.isNotEmpty) {
+      try {
+        final userDoc =
+            await _firestore.collection('users').doc(supplierId).get();
+        if (userDoc.exists) {
+          final data = userDoc.data();
+          if (data != null) {
+            supplierName = data['name']?.toString() ?? '';
+          }
+        }
+      } catch (_) {
+        // ignore, keep empty name if lookup fails
+      }
+    }
+
     await sub.add({
       ...intimation,
+      if (supplierName.isNotEmpty) 'supplierName': supplierName,
       'createdAt': DateTime.now().millisecondsSinceEpoch,
       'status': 'intimated',
     });
+
+    // Also mark the main supplier request as intimated so that dashboard and
+    // other company-side UIs can easily filter for requests with dispatch
+    // intimations.
+    try {
+      await supplierRequests().doc(requestId).update({
+        'status': 'intimated',
+        'updatedAt': DateTime.now().millisecondsSinceEpoch,
+      });
+    } catch (e) {
+      // best-effort; if this fails, the intimation document still exists
+    }
   }
 
   Future<List<Map<String, dynamic>>> getSupplierIntimations(
@@ -111,6 +176,164 @@ class CompanyService {
     }).toList();
   }
 
+  Future<void> deleteSupplierIntimation(
+    String requestId,
+    String intimationId,
+  ) async {
+    await supplierRequests()
+        .doc(requestId)
+        .collection('supplier_intimations')
+        .doc(intimationId)
+        .delete();
+  }
+
+  // ---------------- Standalone supplier intimations ----------------
+  Future<void> addStandaloneIntimation(
+    String companyId,
+    Map<String, dynamic> intimation,
+  ) async {
+    // Best-effort: ensure supplierName is present on the intimation by
+    // looking it up from the users collection using supplierId (uid).
+    String supplierName = (intimation['supplierName'] ?? '').toString();
+    final supplierId = (intimation['supplierId'] ?? '').toString();
+    if (supplierName.isEmpty && supplierId.isNotEmpty) {
+      try {
+        final userDoc =
+            await _firestore.collection('users').doc(supplierId).get();
+        if (userDoc.exists) {
+          final data = userDoc.data();
+          if (data != null) {
+            supplierName = data['name']?.toString() ?? '';
+          }
+        }
+      } catch (_) {
+        // ignore
+      }
+    }
+
+    await standaloneIntimations(companyId).add({
+      ...intimation,
+      if (supplierName.isNotEmpty) 'supplierName': supplierName,
+      'createdAt': DateTime.now().millisecondsSinceEpoch,
+      'status': 'intimated',
+    });
+  }
+
+  Future<List<Map<String, dynamic>>> getStandaloneIntimations(
+    String companyId,
+  ) async {
+    final snap = await standaloneIntimations(companyId)
+        .orderBy('createdAt', descending: true)
+        .get();
+    return snap.docs.map((d) {
+      final m = Map<String, dynamic>.from(d.data());
+      m['id'] = d.id;
+      return m;
+    }).toList();
+  }
+
+  Future<void> deleteStandaloneIntimation(
+    String companyId,
+    String intimationId,
+  ) async {
+    await standaloneIntimations(companyId).doc(intimationId).delete();
+  }
+
+  Future<void> updateStandaloneIntimationStatus(
+    String companyId,
+    String intimationId,
+    String status,
+  ) async {
+    await standaloneIntimations(companyId).doc(intimationId).update({
+      'status': status,
+      'updatedAt': DateTime.now().millisecondsSinceEpoch,
+    });
+  }
+
+  Future<void> deleteChallan(String companyId, String challanId) async {
+    await challans(companyId).doc(challanId).delete();
+  }
+
+  Future<List<Map<String, dynamic>>> getInwardHistory(String companyId) async {
+    // Removed orderBy to avoid composite index requirement.
+    final snap = await inwardRequests()
+        .where('companyId', isEqualTo: companyId)
+        .get();
+    return snap.docs.map((d) {
+      final m = Map<String, dynamic>.from(d.data());
+      m['id'] = d.id;
+      return m;
+    }).toList();
+  }
+
+  Future<void> updateInwardStatus(String inwardId, String status) async {
+    await inwardRequests().doc(inwardId).update({
+      'status': status,
+      'updatedAt': DateTime.now().millisecondsSinceEpoch,
+    });
+  }
+
+  // ---------------- Advance receipts (company -> supplier) ----------------
+  Future<String> createAdvanceReceipt(
+    String companyId,
+    Map<String, dynamic> data,
+  ) async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final doc = {
+      ...data,
+      'createdAt': now,
+      // Allow caller to pass a custom date; fallback to now
+      'date': data['date'] ?? now,
+    };
+
+    final ref = await receipts(companyId).add(doc);
+    return ref.id;
+  }
+
+  Future<List<Map<String, dynamic>>> getAdvanceReceipts(
+    String companyId,
+  ) async {
+    final snap = await receipts(
+      companyId,
+    ).orderBy('date', descending: true).get();
+    return snap.docs.map((d) {
+      final m = Map<String, dynamic>.from(d.data());
+      m['id'] = d.id;
+      return m;
+    }).toList();
+  }
+
+  // ---------------- Inward / Outward request lists ----------------
+  Future<List<Map<String, dynamic>>> getPendingInwardRequests(
+    String companyId,
+  ) async {
+    // Removed orderBy('createdAt') to avoid composite index requirement.
+    final snap = await inwardRequests()
+        .where('companyId', isEqualTo: companyId)
+        .where('status', isEqualTo: 'pending')
+        .get();
+    return snap.docs.map((d) {
+      final m = Map<String, dynamic>.from(d.data());
+      m['id'] = d.id;
+      return m;
+    }).toList();
+  }
+
+  Future<List<Map<String, dynamic>>> getPendingOutwardRequests(
+    String companyId,
+  ) async {
+    // Removed orderBy('createdAt') to avoid composite index requirement.
+    final snap = await outwardRequests()
+        .where('companyId', isEqualTo: companyId)
+        .where('status', isEqualTo: 'pending')
+        .get();
+    return snap.docs.map((d) {
+      final m = Map<String, dynamic>.from(d.data());
+      m['id'] = d.id;
+      return m;
+    }).toList();
+  }
+
   // ---------------- Challan creation (company confirms intimation) ----------------
   /// Accepts an intimation map that contains items: materialId -> { qty, rate, materialKg, plasticKg }
   /// Computes totals and creates a challan under companies/{companyId}/challans
@@ -119,6 +342,24 @@ class CompanyService {
     String supplierId,
     Map<String, dynamic> intimation,
   ) async {
+    // Best-effort: fetch supplier name from users collection so that
+    // challan lists can show a readable supplier name instead of only ID.
+    String supplierName = '';
+    if (supplierId.isNotEmpty) {
+      try {
+        final userDoc =
+            await _firestore.collection('users').doc(supplierId).get();
+        if (userDoc.exists) {
+          final data = userDoc.data();
+          if (data != null) {
+            supplierName = data['name']?.toString() ?? '';
+          }
+        }
+      } catch (_) {
+        // ignore, fallback to empty name
+      }
+    }
+
     final items = Map<String, dynamic>.from(intimation['items'] ?? {});
     double totalAmount = 0.0;
     double totalMaterialKg = 0.0;
@@ -154,9 +395,11 @@ class CompanyService {
     });
 
     final challanNo = _generateUniqueNumber(prefix: 'CH');
+    final now = DateTime.now().millisecondsSinceEpoch;
 
     final doc = {
       'supplierId': supplierId,
+      if (supplierName.isNotEmpty) 'supplierName': supplierName,
       'companyId': companyId,
       'items': items,
       'totalAmount': totalAmount,
@@ -164,10 +407,36 @@ class CompanyService {
       'totalPlasticKg': totalPlasticKg,
       'status': 'open',
       'challanNo': challanNo,
-      'createdAt': DateTime.now().millisecondsSinceEpoch,
+      'createdAt': now,
     };
 
     final ref = await challans(companyId).add(doc);
+
+    // Also create a pending inward request entry for this challan
+    try {
+      double totalQty = 0.0;
+      items.forEach((_, entryRaw) {
+        final entry = Map<String, dynamic>.from(entryRaw ?? {});
+        final qty = (entry['qty'] is num)
+            ? (entry['qty'] as num).toDouble()
+            : double.tryParse('${entry['qty']}') ?? 0.0;
+        totalQty += qty;
+      });
+
+      await inwardRequests().add({
+        'companyId': companyId,
+        'supplierId': supplierId,
+        'challanId': ref.id,
+        'items': items,
+        'quantity': totalQty,
+        'weight': totalMaterialKg + totalPlasticKg,
+        'status': 'pending',
+        'createdAt': now,
+      });
+    } catch (_) {
+      // best-effort; dashboard will still work even if inward entry fails
+    }
+
     return ref.id;
   }
 
@@ -230,6 +499,10 @@ class CompanyService {
       m['id'] = d.id;
       return m;
     }).toList();
+  }
+
+  Future<void> deleteSupplierBill(String companyId, String billId) async {
+    await bills(companyId).doc(billId).delete();
   }
 
   // ---------------- Dashboard summary ----------------

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../utils/responsive.dart';
+import '../utils/app_colors.dart';
 
 class PrimaryButton extends StatelessWidget {
   final String label;
@@ -22,14 +23,14 @@ class PrimaryButton extends StatelessWidget {
       child: ElevatedButton(
         onPressed: loading ? null : onTap,
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.green,
+          backgroundColor: AppColors.primaryGreen,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
         child: loading
             ? const CircularProgressIndicator(color: Colors.white)
             : Text(
                 label,
-                style: TextStyle(fontSize: r.sp(12), color: Colors.black),
+                style: TextStyle(fontSize: r.sp(12), color: AppColors.textDark),
               ),
       ),
     );

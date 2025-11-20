@@ -1,9 +1,9 @@
 // lib/screens/auth/login_screen.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:inward_outward_management/providers/auth_provider.dart';
+import 'package:inward_outward_management/providers/customer_provider.dart';
 import 'package:inward_outward_management/utils/responsive.dart';
 import 'package:inward_outward_management/widgets/app_logo.dart';
 import 'package:inward_outward_management/widgets/rounded_textfield.dart';
@@ -30,14 +30,54 @@ class _LoginScreenState extends State<LoginScreen> {
   // lib/screens/auth/login_screen.dart
   // keep other code the same; replace the _submit method with this:
   Future<void> _submit() async {
-    final email = _emailCtr.text.trim();
+    final input = _emailCtr.text.trim();
     final password = _passwordCtr.text;
 
-    if (!email.contains('@')) return _showSnack('Enter valid email');
+    if (input.isEmpty) return _showSnack('Enter email or mobile');
     if (password.length < 6)
       return _showSnack('Password must be at least 6 chars');
 
     final auth = Provider.of<AuthProvider>(context, listen: false);
+    final customerProv =
+        Provider.of<CustomerProvider>(context, listen: false);
+
+    // If input looks like a mobile (no '@'), first try customer login
+    if (!input.contains('@')) {
+      try {
+        final snap = await FirebaseFirestore.instance
+            .collection('customers')
+            .where('mobile', isEqualTo: input)
+            .limit(1)
+            .get();
+
+        if (snap.docs.isNotEmpty) {
+          final data = snap.docs.first.data();
+          final storedPassword = data['password']?.toString() ?? '';
+
+          if (storedPassword == password) {
+            // Successful customer login
+            customerProv.setCurrentCustomerMobile(input);
+            if (!mounted) return;
+            Navigator.of(context)
+                .pushReplacementNamed('/customerDashboard');
+            return;
+          }
+        }
+      } catch (e) {
+        // If customer lookup fails, fall through to normal auth
+        debugPrint('Customer lookup failed: $e');
+      }
+    }
+
+    // Support both email and supplier mobile login via Firebase Auth.
+    // If user types a mobile number (no '@') *and* customer login failed above,
+    // map it to a synthetic email so that suppliers can log in.
+    final String email;
+    if (input.contains('@')) {
+      email = input;
+    } else {
+      email = '$input@supplier.local';
+    }
 
     // Call provider signIn which returns normalized role or null
     final role = await auth.signInWithEmail(email: email, password: password);
@@ -89,7 +129,7 @@ class _LoginScreenState extends State<LoginScreen> {
               SizedBox(height: r.hp(4)),
               RoundedTextField(
                 controller: _emailCtr,
-                hint: 'Email',
+                hint: 'Email or Mobile',
                 keyboardType: TextInputType.emailAddress,
                 prefixIcon: const Icon(Icons.email),
               ),
@@ -111,36 +151,40 @@ class _LoginScreenState extends State<LoginScreen> {
                 loading: auth.loading,
               ),
               SizedBox(height: r.hp(2)),
-              TextButton(
-                onPressed: () =>
-                    _showSnack('Forgot password flow - implement later'),
-                child: Text(
-                  'Forgot password?',
-                  style: TextStyle(color: Colors.white70, fontSize: r.sp(11)),
-                ),
-              ),
-              SizedBox(height: r.hp(3)),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    "Don't have an account? ",
-                    style: TextStyle(color: Colors.white70, fontSize: r.sp(11)),
-                  ),
-                  GestureDetector(
-                    onTap: () =>
-                        Navigator.of(context).pushReplacementNamed('/register'),
-                    child: Text(
-                      'Register',
-                      style: TextStyle(
-                        color: Colors.greenAccent,
-                        fontSize: r.sp(11),
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+
+              //hiding register buttons and forgot password
+              // TextButton(
+              //   onPressed: () =>
+              //       _showSnack('Forgot password flow - implement later'),
+              //   child: Text(
+              //     'Forgot password?',
+              //     style: TextStyle(color: Colors.white70, fontSize: r.sp(11)),
+              //   ),
+              // ),
+              // SizedBox(height: r.hp(3)),
+              // Row(
+              //   mainAxisAlignment: MainAxisAlignment.center,
+              //   children: [
+              //     Text(
+              //       "Don't have an account? ",
+              //       style: TextStyle(color: Colors.white70, fontSize: r.sp(11)),
+              //     ),
+              //     GestureDetector(
+              //       onTap: () =>
+              //           Navigator.of(context).pushReplacementNamed('/register'),
+              //       child: Text(
+              //         'Register',
+              //         style: TextStyle(
+              //           color: Colors.greenAccent,
+              //           fontSize: r.sp(11),
+              //           fontWeight: FontWeight.bold,
+              //         ),
+              //       ),
+              //     ),
+              //   ],
+              // ),
+           
+           
             ],
           ),
         ),

@@ -1,10 +1,12 @@
 // lib/screens/company/material_request_screen.dart
 import 'package:flutter/material.dart';
-import 'package:inward_outward_management/core/models/material_request.dart';
-import 'package:inward_outward_management/providers/material_request_provider.dart';
+import 'package:inward_outward_management/providers/company_provider.dart';
+import 'package:inward_outward_management/utils/app_colors.dart';
 import 'package:inward_outward_management/utils/responsive.dart';
+import 'package:inward_outward_management/widgets/app_scaffold.dart';
+import 'package:inward_outward_management/widgets/app_form_field.dart';
+import 'package:inward_outward_management/widgets/primary_button.dart';
 import 'package:provider/provider.dart';
-import 'package:uuid/uuid.dart';
 
 class MaterialRequestScreen extends StatefulWidget {
   const MaterialRequestScreen({super.key});
@@ -15,95 +17,242 @@ class MaterialRequestScreen extends StatefulWidget {
 
 class _MaterialRequestScreenState extends State<MaterialRequestScreen> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController materialController = TextEditingController();
   final TextEditingController quantityController = TextEditingController();
   final TextEditingController weightController = TextEditingController();
-  final TextEditingController boxController = TextEditingController();
-  final TextEditingController supplierController = TextEditingController();
+  bool _submitting = false;
+
+  String? _selectedMaterialName;
+  String? _selectedSupplierId;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = Provider.of<CompanyProvider>(context, listen: false);
+      if (!provider.loadingRequests && provider.requests.isEmpty) {
+        provider.loadMaterialRequests();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    quantityController.dispose();
+    weightController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final r = Responsive(context);
-    final provider = Provider.of<MaterialRequestProvider>(context);
+    final provider = Provider.of<CompanyProvider>(context);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Create Material Request'),
-        backgroundColor: Colors.green,
-      ),
-      body: Padding(
-        padding: EdgeInsets.all(r.wp(4)),
+    return AppScaffold(
+      title: 'Create Material Request',
+      body: SafeArea(
         child: SingleChildScrollView(
+          padding: EdgeInsets.all(r.wp(4)),
           child: Form(
             key: _formKey,
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                TextFormField(
-                  controller: materialController,
-                  decoration: const InputDecoration(labelText: 'Material Name'),
-                  validator: (v) => v!.isEmpty ? 'Required' : null,
-                ),
-                SizedBox(height: r.hp(1)),
-                TextFormField(
-                  controller: quantityController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Quantity'),
-                  validator: (v) => v!.isEmpty ? 'Required' : null,
-                ),
-                SizedBox(height: r.hp(1)),
-                TextFormField(
-                  controller: weightController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Weight (kg)'),
-                  validator: (v) => v!.isEmpty ? 'Required' : null,
-                ),
-                SizedBox(height: r.hp(1)),
-                TextFormField(
-                  controller: boxController,
-                  decoration: const InputDecoration(labelText: 'Box Type'),
-                  validator: (v) => v!.isEmpty ? 'Required' : null,
-                ),
-                SizedBox(height: r.hp(1)),
-                TextFormField(
-                  controller: supplierController,
-                  decoration: const InputDecoration(labelText: 'Supplier ID'),
-                  validator: (v) => v!.isEmpty ? 'Required' : null,
+                Text(
+                  'Request Details',
+                  style: TextStyle(
+                    color: AppColors.textLight,
+                    fontSize: r.sp(14),
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 SizedBox(height: r.hp(2)),
-                ElevatedButton(
-                  onPressed: () async {
-                    if (_formKey.currentState!.validate()) {
-                      final request = MaterialRequest(
-                        id: const Uuid().v4(),
-                        materialName: materialController.text,
-                        quantity: int.parse(quantityController.text),
-                        weight: double.parse(weightController.text),
-                        boxType: boxController.text,
-                        supplierId: supplierController.text,
-                        createdAt: DateTime.now(),
-                      );
-                      await provider.addRequest(request);
+                DropdownButtonFormField<String>(
+                  value: _selectedMaterialName,
+                  isExpanded: true,
+                  decoration: InputDecoration(
+                    labelText: 'Material',
+                    labelStyle: const TextStyle(color: AppColors.textLight),
+                    filled: true,
+                    fillColor: AppColors.greyBackground,
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Colors.grey),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: AppColors.primaryGreen,
+                        width: 1.5,
+                      ),
+                    ),
+                  ),
+                  style: const TextStyle(color: AppColors.textLight),
+                  dropdownColor: AppColors.greyBackground,
+                  items: provider.materials
+                      .map(
+                        (m) => DropdownMenuItem<String>(
+                          value: m.name,
+                          child: Text(m.name),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (val) {
+                    setState(() => _selectedMaterialName = val);
+                  },
+                  validator: (v) =>
+                      v == null || v.trim().isEmpty ? 'Select material' : null,
+                ),
+                SizedBox(height: r.hp(1.2)),
+                AppFormField(
+                  controller: quantityController,
+                  label: 'Quantity',
+                  isNumber: true,
+                  validator: (v) =>
+                      v == null || v.trim().isEmpty ? 'Required' : null,
+                ),
+                SizedBox(height: r.hp(1.2)),
+                AppFormField(
+                  controller: weightController,
+                  label: 'Weight (kg)',
+                  isNumber: true,
+                  validator: (v) =>
+                      v == null || v.trim().isEmpty ? 'Required' : null,
+                ),
+                SizedBox(height: r.hp(1.2)),
+                Text(
+                  'Supplier',
+                  style: TextStyle(
+                    color: AppColors.textLight,
+                    fontSize: r.sp(12),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: r.hp(0.6)),
+                DropdownButtonFormField<String>(
+                  value: _selectedSupplierId,
+                  isExpanded: true,
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: AppColors.greyBackground,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: AppColors.greyBackground),
+                    ),
+                  ),
+                  items: provider.suppliers
+                      .map(
+                        (s) => DropdownMenuItem<String>(
+                          value: s.id,
+                          child: Text(
+                            s.name,
+                          ),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (val) {
+                    setState(() {
+                      _selectedSupplierId = val;
+                    });
+                  },
+                  validator: (_) =>
+                      _selectedSupplierId == null ? 'Select supplier' : null,
+                ),
+                SizedBox(height: r.hp(2)),
+                PrimaryButton(
+                  label: 'Submit Request',
+                  loading: _submitting,
+                  onTap: () async {
+                    if (!_formKey.currentState!.validate()) return;
+                    setState(() => _submitting = true);
+                    try {
+                      // Derive supplier login email (mobile@supplier.local) from master data
+                      String? supplierEmail;
+                      for (final s in provider.suppliers) {
+                        if (s.id == _selectedSupplierId &&
+                            s.mobile.isNotEmpty) {
+                          supplierEmail = '${s.mobile}@supplier.local';
+                          break;
+                        }
+                      }
+
+                      final reqMap = {
+                        'materialName': _selectedMaterialName,
+                        'quantity':
+                            int.tryParse(quantityController.text.trim()) ?? 0,
+                        'weight':
+                            double.tryParse(weightController.text.trim()) ??
+                            0.0,
+                        // For supplier side we link by login email
+                        'supplierId': supplierEmail ?? _selectedSupplierId,
+                        'supplierEmail': supplierEmail ?? '',
+                      };
+                      await provider.createMaterialRequest(reqMap);
+                      if (!mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('Request Created')),
                       );
                       _formKey.currentState!.reset();
+                      quantityController.clear();
+                      weightController.clear();
+                      setState(() {
+                        _selectedMaterialName = null;
+                        _selectedSupplierId = null;
+                      });
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Failed to create request: $e'),
+                          ),
+                        );
+                      }
+                    } finally {
+                      if (mounted) {
+                        setState(() => _submitting = false);
+                      }
                     }
                   },
-                  child: const Text('Submit Request'),
                 ),
                 const SizedBox(height: 20),
-                provider.loading
-                    ? const CircularProgressIndicator()
+                Text(
+                  'Existing Requests',
+                  style: TextStyle(
+                    color: AppColors.textLight,
+                    fontSize: r.sp(14),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: r.hp(1)),
+                provider.loadingRequests
+                    ? const Center(child: CircularProgressIndicator())
                     : ListView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         itemCount: provider.requests.length,
                         itemBuilder: (context, index) {
-                          final r = provider.requests[index];
-                          return ListTile(
-                            title: Text(r.materialName),
-                            subtitle: Text(
-                              'Qty: ${r.quantity}, Weight: ${r.weight}kg, Status: ${r.status}',
+                          final req = provider.requests[index];
+                          final materialName =
+                              req['materialName']?.toString() ?? '-';
+                          final qty = req['quantity']?.toString() ?? '0';
+                          final weight = req['weight']?.toString() ?? '0';
+                          final status =
+                              req['status']?.toString() ?? 'requested';
+                          return Card(
+                            color: AppColors.greyBackground,
+                            margin: EdgeInsets.only(bottom: r.hp(1.2)),
+                            child: ListTile(
+                              title: Text(
+                                materialName,
+                                style: const TextStyle(
+                                  color: AppColors.textLight,
+                                ),
+                              ),
+                              subtitle: Text(
+                                'Qty: $qty, Weight: ${weight}kg, Status: $status',
+                                style: const TextStyle(
+                                  color: AppColors.textLight,
+                                ),
+                              ),
                             ),
                           );
                         },

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:inward_outward_management/providers/box_provider.dart';
 import 'package:inward_outward_management/screens/company/box/add_edit_boxscreen.dart';
+import 'package:inward_outward_management/utils/app_colors.dart';
+import 'package:inward_outward_management/utils/responsive.dart';
+import 'package:inward_outward_management/widgets/app_scaffold.dart';
 import 'package:provider/provider.dart';
-import '../../../../utils/responsive.dart';
 
 class BoxListScreen extends StatefulWidget {
   const BoxListScreen({super.key});
@@ -26,25 +28,23 @@ class _BoxListScreenState extends State<BoxListScreen> {
     final prov = Provider.of<BoxProvider>(context);
     final r = Responsive(context);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Box Master"),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        foregroundColor: Colors.black,
-      ),
-
+    return AppScaffold(
+      title: 'Box Master',
       floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.green,
+        backgroundColor: AppColors.primaryGreen,
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const AddEditBoxScreen()),
+            MaterialPageRoute(
+              builder: (_) => ChangeNotifierProvider.value(
+                value: prov,
+                child: const AddEditBoxScreen(),
+              ),
+            ),
           );
         },
-        child: const Icon(Icons.add),
+        child: const Icon(Icons.add, color: AppColors.textDark),
       ),
-
       body: prov.loading
           ? const Center(child: CircularProgressIndicator())
           : ListView.builder(
@@ -53,48 +53,48 @@ class _BoxListScreenState extends State<BoxListScreen> {
               itemBuilder: (_, i) {
                 final box = prov.boxes[i];
 
-                return Container(
-                  padding: EdgeInsets.all(r.wp(3)),
+                return Card(
+                  color: AppColors.greyBackground,
                   margin: EdgeInsets.only(bottom: r.hp(1.5)),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-
                   child: ListTile(
                     title: Text(
-                      "${box['boxType']} Box",
+                      '${box['boxType']} Box',
                       style: TextStyle(
                         fontSize: r.sp(13),
                         fontWeight: FontWeight.bold,
+                        color: AppColors.textLight,
                       ),
                     ),
                     subtitle: Text(
-                      "Material: ${box['materialName']}\n"
-                      "Weight: ${box['boxWeight']} kg + Plastic: ${box['plasticWeight']} kg\n"
-                      "Total Weight: ${box['totalWeight']} kg",
+                      'Material: ${box['materialName']}\n'
+                      'Weight: ${box['boxWeight']} kg + Plastic: ${box['plasticWeight']} kg\n'
+                      'Total Weight: ${box['totalWeight']} kg',
+                      style: const TextStyle(color: AppColors.textLight),
                     ),
-
                     trailing: PopupMenuButton(
+                      color: AppColors.primaryDark,
+                      itemBuilder: (_) => const [
+                        PopupMenuItem(value: 'edit', child: Text('Edit')),
+                        PopupMenuItem(
+                          value: 'delete',
+                          child: Text('Delete'),
+                        ),
+                      ],
                       onSelected: (value) {
-                        if (value == "edit") {
+                        if (value == 'edit') {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => AddEditBoxScreen(existing: box),
+                              builder: (_) => ChangeNotifierProvider.value(
+                                value: prov,
+                                child: AddEditBoxScreen(existing: box),
+                              ),
                             ),
                           );
                         } else {
-                          prov.deleteBox(box["boxId"]);
+                          prov.deleteBox(box['boxId']);
                         }
                       },
-                      itemBuilder: (_) => [
-                        const PopupMenuItem(value: "edit", child: Text("Edit")),
-                        const PopupMenuItem(
-                          value: "delete",
-                          child: Text("Delete"),
-                        ),
-                      ],
                     ),
                   ),
                 );

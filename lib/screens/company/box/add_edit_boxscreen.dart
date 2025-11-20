@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:inward_outward_management/providers/box_provider.dart';
+import 'package:inward_outward_management/utils/app_colors.dart';
+import 'package:inward_outward_management/utils/responsive.dart';
+import 'package:inward_outward_management/widgets/app_form_field.dart';
+import 'package:inward_outward_management/widgets/app_scaffold.dart';
+import 'package:inward_outward_management/widgets/primary_button.dart';
 import 'package:provider/provider.dart';
-import '../../../../utils/responsive.dart';
 import 'package:uuid/uuid.dart';
 
 class AddEditBoxScreen extends StatefulWidget {
@@ -61,94 +65,86 @@ class _AddEditBoxScreenState extends State<AddEditBoxScreen> {
     final prov = Provider.of<BoxProvider>(context, listen: false);
     final r = Responsive(context);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.existing == null ? "Add Box" : "Edit Box"),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        foregroundColor: Colors.black,
-      ),
-
-      body: Padding(
-        padding: EdgeInsets.all(r.wp(5)),
-        child: Form(
-          key: _formKey,
-
-          child: Column(
-            children: [
-              TextFormField(
-                controller: materialName,
-                decoration: const InputDecoration(labelText: "Material Name"),
-                validator: (v) => v!.isEmpty ? "Required" : null,
-              ),
-
-              TextFormField(
-                controller: boxType,
-                decoration: const InputDecoration(labelText: "Box Type"),
-                validator: (v) => v!.isEmpty ? "Required" : null,
-              ),
-
-              TextFormField(
-                controller: boxWeight,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: "Box Weight (kg)"),
-              ),
-
-              TextFormField(
-                controller: plasticWeight,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: "Plastic Weight (kg)",
+    return AppScaffold(
+      title: widget.existing == null ? 'Add Box' : 'Edit Box',
+      body: SafeArea(
+        child: Padding(
+          padding: EdgeInsets.all(r.wp(5)),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                AppFormField(
+                  controller: materialName,
+                  label: 'Material Name',
+                  validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
                 ),
-              ),
-
-              TextFormField(
-                controller: rate,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: "Rate (₹ per kg)"),
-              ),
-
-              SizedBox(height: r.hp(2)),
-              Text(
-                "Total Weight: ${totalWeight.toStringAsFixed(2)} kg",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: r.sp(12),
+                SizedBox(height: r.hp(1.2)),
+                AppFormField(
+                  controller: boxType,
+                  label: 'Box Type',
+                  validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
                 ),
-              ),
-              Text(
-                "Total Amount: ₹${amount.toStringAsFixed(2)}",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: r.sp(12),
+                SizedBox(height: r.hp(1.2)),
+                AppFormField(
+                  controller: boxWeight,
+                  label: 'Box Weight (kg)',
+                  isNumber: true,
                 ),
-              ),
+                SizedBox(height: r.hp(1.2)),
+                AppFormField(
+                  controller: plasticWeight,
+                  label: 'Plastic Weight (kg)',
+                  isNumber: true,
+                ),
+                SizedBox(height: r.hp(1.2)),
+                AppFormField(
+                  controller: rate,
+                  label: 'Rate (₹ per kg)',
+                  isNumber: true,
+                ),
+                SizedBox(height: r.hp(2)),
+                Text(
+                  'Total Weight: ${totalWeight.toStringAsFixed(2)} kg',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: r.sp(12),
+                    color: AppColors.textLight,
+                  ),
+                ),
+                Text(
+                  'Total Amount: ₹${amount.toStringAsFixed(2)}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: r.sp(12),
+                    color: AppColors.textLight,
+                  ),
+                ),
+                const Spacer(),
+                PrimaryButton(
+                  label: widget.existing == null ? 'Save' : 'Update',
+                  onTap: () async {
+                    if (!_formKey.currentState!.validate()) return;
 
-              const Spacer(),
+                    final box = {
+                      'boxId': widget.existing?['boxId'] ?? const Uuid().v4(),
+                      'materialName': materialName.text,
+                      'boxType': boxType.text,
+                      'boxWeight': double.tryParse(boxWeight.text) ?? 0,
+                      'plasticWeight': double.tryParse(plasticWeight.text) ?? 0,
+                      'rate': double.tryParse(rate.text) ?? 0,
+                      'totalWeight': totalWeight,
+                      'amount': amount,
+                      'createdAt': DateTime.now().millisecondsSinceEpoch,
+                    };
 
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                onPressed: () async {
-                  if (!_formKey.currentState!.validate()) return;
-
-                  final box = {
-                    "boxId": widget.existing?["boxId"] ?? const Uuid().v4(),
-                    "materialName": materialName.text,
-                    "boxType": boxType.text,
-                    "boxWeight": double.tryParse(boxWeight.text) ?? 0,
-                    "plasticWeight": double.tryParse(plasticWeight.text) ?? 0,
-                    "rate": double.tryParse(rate.text) ?? 0,
-                    "totalWeight": totalWeight,
-                    "amount": amount,
-                    "createdAt": DateTime.now().millisecondsSinceEpoch,
-                  };
-
-                  await prov.saveBox(box);
-                  Navigator.pop(context);
-                },
-                child: Text(widget.existing == null ? "Save" : "Update"),
-              ),
-            ],
+                    await prov.saveBox(box);
+                    if (mounted) Navigator.pop(context);
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       ),

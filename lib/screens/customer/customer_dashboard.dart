@@ -2,6 +2,10 @@ import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'package:flutter/material.dart';
 import 'package:inward_outward_management/providers/auth_provider.dart';
 import 'package:inward_outward_management/providers/customer_provider.dart';
+import 'package:inward_outward_management/utils/app_colors.dart';
+import 'package:inward_outward_management/utils/responsive.dart';
+import 'package:inward_outward_management/widgets/app_scaffold.dart';
+import 'package:inward_outward_management/screens/customer/customer_invoices_screen.dart';
 import 'package:provider/provider.dart';
 
 class CustomerDashboardScreen extends StatefulWidget {
@@ -30,230 +34,239 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
+    final r = Responsive(context);
+
     // Use a property that exists on the User type (e.g. displayName or email).
     final userName =
         authProvider.currentUser?.displayName ??
         authProvider.currentUser?.email ??
         'Customer';
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F6FA),
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        title: const Text(
-          "Dashboard",
-          style: TextStyle(fontWeight: FontWeight.w700, color: Colors.black87),
-        ),
-        centerTitle: false,
-        leading: IconButton(
+    return AppScaffold(
+      title: 'Customer Dashboard',
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.logout, color: AppColors.textLight, size: 18),
           onPressed: () async {
             await FirebaseAuth.instance.signOut();
             if (context.mounted) {
               Navigator.of(context).pushReplacementNamed('/login');
             }
           },
-          icon: Icon(Icons.logout, size: 18, color: Colors.black),
         ),
-        actions: [
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(
-              Icons.notifications_outlined,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: SafeArea(
-        child: Consumer<CustomerProvider>(
-          builder: (context, cp, _) {
-            return RefreshIndicator(
-              onRefresh: () => cp.fetchDashboardStats(),
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final isNarrow = constraints.maxWidth < 600;
-                    // card width for two-column look on larger screens
-                    final cardWidth = isNarrow
-                        ? double.infinity
-                        : (constraints.maxWidth - 48) / 2;
+      ],
+      body: Column(
+        children: [
+          Expanded(
+            child: SafeArea(
+              child: Consumer<CustomerProvider>(
+                builder: (context, cp, _) {
+                  return RefreshIndicator(
+                    onRefresh: () => cp.fetchDashboardStats(),
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: r.wp(4),
+                        vertical: r.hp(1),
+                      ),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final isNarrow = constraints.maxWidth < 600;
+                          // card width for two-column look on larger screens
+                          final cardWidth = isNarrow
+                              ? double.infinity
+                              : (constraints.maxWidth - 48) / 2;
 
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Top white container with user icon and metrics
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(18),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.grey.shade300,
-                                blurRadius: 6,
-                                spreadRadius: 2,
-                                offset: const Offset(0, 3),
-                              ),
-                            ],
-                          ),
-                          child: Column(
+                          return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Row(
-                                children: [
-                                  CircleAvatar(
-                                    radius: 22,
-                                    backgroundColor: Colors.orange.shade100,
-                                    child: const Icon(
-                                      Icons.person_outline,
-                                      color: Colors.orange,
+                              // Top card with user icon and metrics (dark theme)
+                              Container(
+                                width: double.infinity,
+                                padding: EdgeInsets.all(r.wp(4)),
+                                decoration: BoxDecoration(
+                                  color: AppColors.greyBackground,
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        CircleAvatar(
+                                          radius: 22,
+                                          backgroundColor: AppColors
+                                              .primaryGreen
+                                              .withOpacity(0.15),
+                                          child: const Icon(
+                                            Icons.person_outline,
+                                            color: AppColors.primaryGreen,
+                                          ),
+                                        ),
+                                        SizedBox(width: r.wp(2.5)),
+                                        Text(
+                                          'Hello, $userName',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: r.sp(16),
+                                            color: AppColors.textLight,
+                                          ),
+                                        ),
+                                        const Spacer(),
+                                        IconButton(
+                                          onPressed: () {},
+                                          icon: const Icon(
+                                            Icons.notifications_outlined,
+                                            color: AppColors.textLight,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Text(
-                                    'Hello, $userName',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 18,
-                                      color: Colors.black87,
+                                    SizedBox(height: r.hp(1.5)),
+                                    Wrap(
+                                      spacing: r.wp(2.5),
+                                      runSpacing: r.hp(1.5),
+                                      children: [
+                                        SizedBox(
+                                          width: cardWidth,
+                                          child: _metricCard(
+                                            titleTop: '${cp.invoicesDue}',
+                                            subtitle: 'Invoices Due',
+                                            icon: Icons.receipt_long_outlined,
+                                            iconBg: Colors.blue.shade100,
+                                            isLoading: cp.loading,
+                                            onTap: () {
+                                              Navigator.of(context).push(
+                                                MaterialPageRoute(
+                                                  builder: (_) =>
+                                                      const CustomerInvoicesScreen(),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                        SizedBox(
+                                          width: cardWidth,
+                                          child: _metricCard(
+                                            titleTop:
+                                                '₹${_formatAmount(cp.pendingPayments)}',
+                                            subtitle: 'Pending Payments',
+                                            icon:
+                                                Icons.account_balance_wallet_outlined,
+                                            iconBg: Colors.amber.shade100,
+                                            isLoading: cp.loading,
+                                            onTap: () {
+                                              Navigator.of(context).push(
+                                                MaterialPageRoute(
+                                                  builder: (_) =>
+                                                      const CustomerInvoicesScreen(),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                        SizedBox(
+                                          width: cardWidth,
+                                          child: _metricCard(
+                                            titleTop:
+                                                '${cp.billingHistoryCount > 0 ? "View" : 0}',
+                                            subtitle: 'Billing History',
+                                            icon: Icons.history_rounded,
+                                            iconBg: Colors.pink.shade100,
+                                            isLoading: cp.loading,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ),
-                                  const Spacer(),
-                                  // small bell already in appBar, optional duplicate
-                                  IconButton(
-                                    onPressed: () {},
-                                    icon: const Icon(
-                                      Icons.notifications_none_rounded,
-                                    ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                              const SizedBox(height: 16),
-                              // metrics grid
-                              Wrap(
-                                spacing: 12,
-                                runSpacing: 12,
-                                children: [
-                                  SizedBox(
-                                    width: cardWidth,
-                                    child: _metricCard(
-                                      titleTop: '${cp.invoicesDue}',
-                                      subtitle: 'Invoices Due',
-                                      icon: Icons.receipt_long_outlined,
-                                      iconBg: Colors.blue.shade100,
-                                      isLoading: cp.loading,
-                                    ),
-                                  ),
-                                  SizedBox(
-                                    width: cardWidth,
-                                    child: _metricCard(
-                                      titleTop:
-                                          '₹${_formatAmount(cp.pendingPayments)}',
-                                      subtitle: 'Pending Payments',
-                                      icon:
-                                          Icons.account_balance_wallet_outlined,
-                                      iconBg: Colors.yellow.shade100,
-                                      isLoading: cp.loading,
-                                    ),
-                                  ),
-                                  SizedBox(
-                                    width: cardWidth,
-                                    child: _metricCard(
-                                      titleTop:
-                                          '${cp.billingHistoryCount > 0 ? "View" : 0}',
-                                      subtitle: 'Billing History',
-                                      icon: Icons.history_rounded,
-                                      iconBg: Colors.pink.shade100,
-                                      isLoading: cp.loading,
-                                    ),
-                                  ),
-                                ],
+
+                              SizedBox(height: r.hp(2)),
+
+                              Text(
+                                'Quick Access',
+                                style: TextStyle(
+                                  fontSize: r.sp(14),
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textLight,
+                                ),
                               ),
+                              SizedBox(height: r.hp(1.2)),
+
+                              _quickAccessItem(
+                                context,
+                                icon: Icons.add_circle_outline,
+                                title: 'Generate New Invoice',
+                                onTap: () {
+                                  // navigate to invoice creation
+                                  // Navigator.push(context, MaterialPageRoute(builder: (_) => CreateInvoiceScreen()));
+                                },
+                              ),
+                              _quickAccessItem(
+                                context,
+                                icon: Icons.history_toggle_off,
+                                title: 'View Billing History',
+                                onTap: () {
+                                  // navigate to billing history
+                                },
+                              ),
+                              _quickAccessItem(
+                                context,
+                                icon: Icons.receipt_long_outlined,
+                                title: 'View Invoices',
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          const CustomerInvoicesScreen(),
+                                    ),
+                                  );
+                                },
+                              ),
+
+                              SizedBox(height: r.hp(4)),
                             ],
-                          ),
-                        ),
-
-                        const SizedBox(height: 20),
-
-                        const Text(
-                          "Quick Access",
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.black87,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-
-                        _quickAccessItem(
-                          context,
-                          icon: Icons.add_circle_outline,
-                          title: 'Generate New Invoice',
-                          onTap: () {
-                            // navigate to invoice creation
-                            // Navigator.push(context, MaterialPageRoute(builder: (_) => CreateInvoiceScreen()));
-                          },
-                        ),
-                        _quickAccessItem(
-                          context,
-                          icon: Icons.history_toggle_off,
-                          title: 'View Billing History',
-                          onTap: () {
-                            // navigate to billing history
-                          },
-                        ),
-                        _quickAccessItem(
-                          context,
-                          icon: Icons.receipt_long_outlined,
-                          title: 'View Invoices',
-                          onTap: () {
-                            // navigate to invoices list
-                          },
-                        ),
-
-                        const SizedBox(height: 40),
-                      ],
-                    );
-                  },
-                ),
+                          );
+                        },
+                      ),
+                    ),
+                  );
+                },
               ),
-            );
-          },
-        ),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.green,
-        unselectedItemColor: Colors.grey,
-        onTap: (index) {
-          setState(() => _currentIndex = index);
-          // implement navigation to other tabs (Products, History, Settings)
-        },
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.grid_view_rounded),
-            label: 'Dashboard',
+            ),
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.inventory_2_outlined),
-            label: 'Products',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.history_rounded),
-            label: 'History',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings_outlined),
-            label: 'Settings',
+          Container(
+            color: AppColors.greyBackground,
+            child: BottomNavigationBar(
+              backgroundColor: AppColors.greyBackground,
+              currentIndex: _currentIndex,
+              type: BottomNavigationBarType.fixed,
+              selectedItemColor: AppColors.primaryGreen,
+              unselectedItemColor: Colors.grey,
+              onTap: (index) {
+                setState(() => _currentIndex = index);
+                // implement navigation to other tabs (Products, History, Settings)
+              },
+              items: const [
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.grid_view_rounded),
+                  label: 'Dashboard',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.inventory_2_outlined),
+                  label: 'Products',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.history_rounded),
+                  label: 'History',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.settings_outlined),
+                  label: 'Settings',
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -266,59 +279,63 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
     required IconData icon,
     required Color iconBg,
     required bool isLoading,
+    VoidCallback? onTap,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      margin: const EdgeInsets.only(bottom: 6),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          CircleAvatar(
-            backgroundColor: iconBg,
-            radius: 20,
-            child: Icon(icon, color: Colors.black87),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: isLoading
-                ? const SizedBox(
-                    height: 40,
-                    child: Center(
-                      child: SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        margin: const EdgeInsets.only(bottom: 6),
+        decoration: BoxDecoration(
+          color: AppColors.primaryDark,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.greyBackground),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            CircleAvatar(
+              backgroundColor: iconBg,
+              radius: 20,
+              child:  Icon(icon, color: AppColors.textDark),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: isLoading
+                  ? const SizedBox(
+                      height: 40,
+                      child: Center(
+                        child: SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
                       ),
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          titleTop,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textLight,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          subtitle,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textLight,
+                          ),
+                        ),
+                      ],
                     ),
-                  )
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        titleTop,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        subtitle,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.black54,
-                        ),
-                      ),
-                    ],
-                  ),
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -329,30 +346,36 @@ class _CustomerDashboardScreenState extends State<CustomerDashboardScreen> {
     required String title,
     required VoidCallback onTap,
   }) {
+    final r = Responsive(context);
     return GestureDetector(
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.greyBackground,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade200),
+          border: Border.all(color: AppColors.greyBackground),
         ),
         child: Row(
           children: [
-            Icon(icon),
+            Icon(icon, color: AppColors.primaryGreen),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
                 title,
-                style: const TextStyle(
-                  fontSize: 15,
+                style: TextStyle(
+                  fontSize: r.sp(13),
                   fontWeight: FontWeight.w500,
+                  color: AppColors.textLight,
                 ),
               ),
             ),
-            const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+            const Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+              color: AppColors.textLight,
+            ),
           ],
         ),
       ),

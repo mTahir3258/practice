@@ -1,10 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class CustomerProvider with ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   bool _loading = false;
   bool get loading => _loading;
@@ -18,10 +16,18 @@ class CustomerProvider with ChangeNotifier {
   int _billingHistoryCount = 0;
   int get billingHistoryCount => _billingHistoryCount;
 
+  String? _currentCustomerMobile;
+  String? get currentCustomerMobile => _currentCustomerMobile;
+
+  void setCurrentCustomerMobile(String mobile) {
+    _currentCustomerMobile = mobile.trim();
+    notifyListeners();
+  }
+
   // Call this to refresh dashboard numbers
   Future<void> fetchDashboardStats() async {
-    final user = _auth.currentUser;
-    if (user == null) return;
+    final mobile = _currentCustomerMobile;
+    if (mobile == null || mobile.isEmpty) return;
 
     _loading = true;
     notifyListeners();
@@ -29,8 +35,9 @@ class CustomerProvider with ChangeNotifier {
     try {
       // Query invoices for this customer
       final q = await _firestore
-          .collection('customerInvoices')
-          .where('customerId', isEqualTo: user.uid)
+          .collection('customers')
+          .doc(mobile)
+          .collection('invoices')
           .get();
 
       final docs = q.docs;

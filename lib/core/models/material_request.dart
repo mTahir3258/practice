@@ -37,7 +37,7 @@ class MaterialRequest {
       materialName: map['materialName'],
       quantity: map['quantity'],
       weight: map['weight'],
-      boxType: map['boxType'],
+      boxType: map['boxType'] ?? '',
       supplierId: map['supplierId'],
       createdAt: DateTime.parse(map['createdAt']),
       status: map['status'] ?? 'pending',

@@ -10,6 +10,7 @@ import 'package:inward_outward_management/screens/company/dashboard/material_mas
 import 'package:inward_outward_management/screens/company/mainwrapper/company_main_screen.dart';
 import 'package:inward_outward_management/screens/company/material/material_request_screen.dart';
 import 'package:inward_outward_management/screens/customer/customer_dashboard.dart';
+import 'package:inward_outward_management/screens/auth/customer_login_screen.dart';
 import 'package:inward_outward_management/screens/home/role_router_screen.dart';
 import 'package:inward_outward_management/screens/supplier/supplier_dashboard.dart';
 import 'package:provider/provider.dart';
@@ -59,6 +60,7 @@ class MyApp extends StatelessWidget {
             routes: {
               '/': (_) => const SplashScreen(),
               '/login': (_) => const LoginScreen(),
+              '/customerLogin': (_) => const CustomerLoginScreen(),
               '/register': (_) => const RegisterScreen(),
               '/roleRouter': (_) => const RoleRouterScreen(),
               '/companyDashboard': (_) => CompanyMainScreen(),

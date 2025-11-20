@@ -3,6 +3,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:inward_outward_management/core/models/material_model.dart';
+import 'package:inward_outward_management/core/models/unit_model.dart';
+import 'package:inward_outward_management/core/models/supplier_model.dart';
+import 'package:inward_outward_management/core/models/customer_model.dart';
 import 'package:inward_outward_management/repository/company_repository.dart';
 import 'package:inward_outward_management/services/company_services.dart';
 
@@ -12,6 +15,9 @@ class CompanyProvider with ChangeNotifier {
   final CompanyRepository _repository = CompanyRepository();
 
   List<MaterialModel> materials = [];
+  List<UnitModel> units = [];
+  List<SupplierModel> suppliers = [];
+  List<CustomerModel> customers = [];
   bool isLoading = false;
 
   String companyId;
@@ -21,10 +27,16 @@ class CompanyProvider with ChangeNotifier {
 
   void _initLoad() {
     loadMaterials();
+    loadUnits();
+    loadSuppliers();
+    loadCustomers();
     loadDashboardSummary();
     loadMaterialRequests();
     loadChallans();
     loadSupplierBills();
+    loadPendingInward();
+    loadPendingOutward();
+    loadStandaloneIntimations();
   }
 
   // -------------- Materials --------------
@@ -68,6 +80,87 @@ class CompanyProvider with ChangeNotifier {
   Future<void> deleteMaterial(String id) async {
     await _repository.deleteMaterial(id);
     await loadMaterials();
+  }
+
+  // -------------- Units --------------
+
+  Future<void> loadUnits() async {
+    isLoading = true;
+    notifyListeners();
+
+    units = await _repository.fetchUnits();
+
+    isLoading = false;
+    notifyListeners();
+  }
+
+  Future<void> addUnit(UnitModel unit) async {
+    await _repository.addUnit(unit);
+    await loadUnits();
+  }
+
+  Future<void> updateUnit(String id, UnitModel unit) async {
+    await _repository.updateUnit(id, unit);
+    await loadUnits();
+  }
+
+  Future<void> deleteUnit(String id) async {
+    await _repository.deleteUnit(id);
+    await loadUnits();
+  }
+
+  // -------------- Suppliers --------------
+
+  Future<void> loadSuppliers() async {
+    isLoading = true;
+    notifyListeners();
+
+    suppliers = await _repository.fetchSuppliers();
+
+    isLoading = false;
+    notifyListeners();
+  }
+
+  Future<void> addSupplier(SupplierModel supplier) async {
+    await _repository.addSupplier(supplier);
+    await loadSuppliers();
+  }
+
+  Future<void> updateSupplier(String id, SupplierModel supplier) async {
+    await _repository.updateSupplier(id, supplier);
+    await loadSuppliers();
+  }
+
+  Future<void> deleteSupplier(String id) async {
+    await _repository.deleteSupplier(id);
+    await loadSuppliers();
+  }
+
+  // -------------- Customers --------------
+
+  Future<void> loadCustomers() async {
+    isLoading = true;
+    notifyListeners();
+
+    customers = await _repository.fetchCustomers();
+
+    isLoading = false;
+    notifyListeners();
+  }
+
+  Future<void> addCustomer(CustomerModel customer) async {
+    await _repository.addCustomer(customer);
+    await loadCustomers();
+  }
+
+  Future<void> updateCustomer(String id, CustomerModel customer) async {
+    await _repository.updateCustomer(id, customer);
+    await loadCustomers();
+  }
+
+  Future<void> deleteCustomer(String id) async {
+    await _repository.deleteCustomer(id);
+    await loadCustomers();
   }
 
   // Future<void> loadMaterials() async {
@@ -116,7 +209,6 @@ class CompanyProvider with ChangeNotifier {
   List<Map<String, dynamic>> get requests => _requests;
 
   Future<void> loadMaterialRequests() async {
-    if (companyId.isEmpty) return;
     loadingRequests = true;
     notifyListeners();
     try {
@@ -137,6 +229,12 @@ class CompanyProvider with ChangeNotifier {
     return id;
   }
 
+  Future<void> deleteMaterialRequest(String requestId) async {
+    await _service.deleteMaterialRequest(requestId);
+    await loadMaterialRequests();
+    await loadDashboardSummary();
+  }
+
   Future<List<Map<String, dynamic>>> loadSupplierIntimations(
     String requestId,
   ) async {
@@ -148,6 +246,13 @@ class CompanyProvider with ChangeNotifier {
     Map<String, dynamic> intimation,
   ) async {
     await _service.addSupplierIntimation(requestId, intimation);
+  }
+
+  Future<void> deleteSupplierIntimation(
+    String requestId,
+    String intimationId,
+  ) async {
+    await _service.deleteSupplierIntimation(requestId, intimationId);
   }
 
   Future<String> confirmIntimationAndCreateChallan(
@@ -178,6 +283,83 @@ class CompanyProvider with ChangeNotifier {
     return challanId;
   }
 
+  // -------------- Standalone supplier intimations --------------
+  bool loadingStandaloneIntimations = false;
+  List<Map<String, dynamic>> _standaloneIntimations = [];
+  List<Map<String, dynamic>> get standaloneIntimations => _standaloneIntimations;
+
+  Future<void> loadStandaloneIntimations() async {
+    if (companyId.isEmpty) return;
+    loadingStandaloneIntimations = true;
+    notifyListeners();
+    try {
+      _standaloneIntimations =
+          await _service.getStandaloneIntimations(companyId);
+    } catch (e) {
+      debugPrint('loadStandaloneIntimations error: $e');
+      _standaloneIntimations = [];
+    } finally {
+      loadingStandaloneIntimations = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> addStandaloneIntimation(Map<String, dynamic> intimation) async {
+    if (companyId.isEmpty) throw Exception('Company ID not set');
+    await _service.addStandaloneIntimation(companyId, intimation);
+    await loadStandaloneIntimations();
+  }
+
+  Future<void> deleteStandaloneIntimation(String intimationId) async {
+    if (companyId.isEmpty) throw Exception('Company ID not set');
+    await _service.deleteStandaloneIntimation(companyId, intimationId);
+    await loadStandaloneIntimations();
+  }
+
+  Future<String> confirmStandaloneIntimationAndCreateChallan(
+    Map<String, dynamic> intimation,
+  ) async {
+    if (companyId.isEmpty) throw Exception('Company ID not set');
+    final supplierId = intimation['supplierId']?.toString() ?? '';
+    final challanId = await _service.createChallanFromIntimation(
+      companyId,
+      supplierId,
+      intimation,
+    );
+
+    // Best-effort: mark standalone intimation as confirmed
+    try {
+      final id = intimation['id']?.toString() ?? '';
+      if (id.isNotEmpty) {
+        await _service.updateStandaloneIntimationStatus(
+          companyId,
+          id,
+          'confirmed',
+        );
+      }
+    } catch (e) {
+      debugPrint('Could not update standalone intimation status: $e');
+    }
+
+    await loadChallans();
+    await loadStandaloneIntimations();
+    return challanId;
+  }
+
+  /// Update only the status of a standalone intimation document.
+  Future<void> updateStandaloneIntimationStatusOnly({
+    required String intimationId,
+    required String status,
+  }) async {
+    if (companyId.isEmpty) throw Exception('Company ID not set');
+    await _service.updateStandaloneIntimationStatus(
+      companyId,
+      intimationId,
+      status,
+    );
+    await loadStandaloneIntimations();
+  }
+
   // -------------- Challans --------------
   bool loadingChallans = false;
   List<Map<String, dynamic>> _challans = [];
@@ -203,6 +385,13 @@ class CompanyProvider with ChangeNotifier {
     await _service.updateChallanStatus(companyId, challanId, status);
     await loadChallans();
     notifyListeners();
+  }
+
+  Future<void> deleteChallan(String challanId) async {
+    if (companyId.isEmpty) throw Exception('Company ID not set');
+    await _service.deleteChallan(companyId, challanId);
+    await loadChallans();
+    await loadDashboardSummary();
   }
 
   // -------------- Supplier bills --------------
@@ -234,6 +423,106 @@ class CompanyProvider with ChangeNotifier {
     await loadSupplierBills();
     await loadChallans();
     return id;
+  }
+
+  Future<void> deleteBill(String billId) async {
+    if (companyId.isEmpty) throw Exception('Company ID not set');
+    await _service.deleteSupplierBill(companyId, billId);
+    await loadSupplierBills();
+    await loadDashboardSummary();
+  }
+
+  // -------------- Advance receipts --------------
+  bool loadingAdvanceReceipts = false;
+  List<Map<String, dynamic>> _advanceReceipts = [];
+  List<Map<String, dynamic>> get advanceReceipts => _advanceReceipts;
+
+  Future<void> loadAdvanceReceipts() async {
+    if (companyId.isEmpty) return;
+    loadingAdvanceReceipts = true;
+    notifyListeners();
+    try {
+      _advanceReceipts = await _service.getAdvanceReceipts(companyId);
+    } catch (e) {
+      debugPrint('loadAdvanceReceipts error: $e');
+      _advanceReceipts = [];
+    } finally {
+      loadingAdvanceReceipts = false;
+      notifyListeners();
+    }
+  }
+
+  Future<String> createAdvanceReceipt(Map<String, dynamic> data) async {
+    if (companyId.isEmpty) throw Exception('Company ID not set');
+    final id = await _service.createAdvanceReceipt(companyId, data);
+    await loadAdvanceReceipts();
+    await loadDashboardSummary();
+    return id;
+  }
+
+  // -------------- Pending inward / outward --------------
+  bool loadingPendingInward = false;
+  bool loadingPendingOutward = false;
+
+  List<Map<String, dynamic>> _pendingInward = [];
+  List<Map<String, dynamic>> get pendingInwardList => _pendingInward;
+
+  List<Map<String, dynamic>> _pendingOutward = [];
+  List<Map<String, dynamic>> get pendingOutwardList => _pendingOutward;
+
+  Future<void> loadPendingInward() async {
+    if (companyId.isEmpty) return;
+    loadingPendingInward = true;
+    notifyListeners();
+    try {
+      _pendingInward = await _service.getPendingInwardRequests(companyId);
+    } catch (e) {
+      debugPrint('loadPendingInward error: $e');
+      _pendingInward = [];
+    } finally {
+      loadingPendingInward = false;
+      notifyListeners();
+    }
+  }
+
+  // Inward history (all statuses)
+  bool loadingInwardHistory = false;
+  List<Map<String, dynamic>> _inwardHistory = [];
+  List<Map<String, dynamic>> get inwardHistory => _inwardHistory;
+
+  Future<void> loadInwardHistory() async {
+    if (companyId.isEmpty) return;
+    loadingInwardHistory = true;
+    notifyListeners();
+    try {
+      _inwardHistory = await _service.getInwardHistory(companyId);
+    } catch (e) {
+      debugPrint('loadInwardHistory error: $e');
+      _inwardHistory = [];
+    } finally {
+      loadingInwardHistory = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> updateInwardStatus(String inwardId, String status) async {
+    await _service.updateInwardStatus(inwardId, status);
+    await loadPendingInward();
+  }
+
+  Future<void> loadPendingOutward() async {
+    if (companyId.isEmpty) return;
+    loadingPendingOutward = true;
+    notifyListeners();
+    try {
+      _pendingOutward = await _service.getPendingOutwardRequests(companyId);
+    } catch (e) {
+      debugPrint('loadPendingOutward error: $e');
+      _pendingOutward = [];
+    } finally {
+      loadingPendingOutward = false;
+      notifyListeners();
+    }
   }
 
   // -------------- Dashboard summary --------------
