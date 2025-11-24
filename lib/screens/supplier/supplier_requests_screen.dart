@@ -124,6 +124,7 @@ class _SupplierRequestsScreenState extends State<SupplierRequestsScreen> {
                       companyId: companyId,
                       baseQuantity: qty,
                       baseWeight: boxes,
+                     
                     ),
                   ),
                 );

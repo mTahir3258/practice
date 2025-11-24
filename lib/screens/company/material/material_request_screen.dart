@@ -90,8 +90,9 @@ class _MaterialRequestScreenState extends State<MaterialRequestScreen> {
                               fillColor: AppColors.greyBackground,
                               enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(8),
-                                borderSide:
-                                    const BorderSide(color: Colors.transparent),
+                                borderSide: const BorderSide(
+                                  color: Colors.transparent,
+                                ),
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(8),
@@ -101,8 +102,7 @@ class _MaterialRequestScreenState extends State<MaterialRequestScreen> {
                                 ),
                               ),
                             ),
-                            style:
-                                const TextStyle(color: AppColors.textLight),
+                            style: const TextStyle(color: AppColors.textLight),
                             dropdownColor: AppColors.greyBackground,
                             items: provider.materials
                                 .map(
@@ -140,7 +140,9 @@ class _MaterialRequestScreenState extends State<MaterialRequestScreen> {
                           ),
                           SizedBox(height: r.hp(1.8)),
                           Text(
-                            'Enter total Unit',
+                            _selectedMaterialUnit != null
+                                ? 'Enter total  ($_selectedMaterialUnit)'
+                                : 'Enter total ',
                             style: TextStyle(
                               color: AppColors.textLight,
                               fontSize: r.sp(12),
@@ -150,10 +152,15 @@ class _MaterialRequestScreenState extends State<MaterialRequestScreen> {
                           SizedBox(height: r.hp(0.6)),
                           AppFormField(
                             controller: quantityController,
-                            label: 'Enter total Unit',
+                            label: '',
+                            hint: _selectedMaterialUnit != null
+                                ? 'Enter total ($_selectedMaterialUnit)'
+                                : 'Enter total ',
                             isNumber: true,
-                            validator: (v) =>
-                                v == null || v.trim().isEmpty ? 'Required' : null,
+                            suffixText: _selectedMaterialUnit,
+                            validator: (v) => v == null || v.trim().isEmpty
+                                ? 'Required'
+                                : null,
                           ),
                           SizedBox(height: r.hp(1.8)),
                           Text(
@@ -167,10 +174,12 @@ class _MaterialRequestScreenState extends State<MaterialRequestScreen> {
                           SizedBox(height: r.hp(0.6)),
                           AppFormField(
                             controller: weightController,
-                            label: 'Enter total Box',
+                            label: '',
+                            hint: 'Enter total Box',
                             isNumber: true,
-                            validator: (v) =>
-                                v == null || v.trim().isEmpty ? 'Required' : null,
+                            validator: (v) => v == null || v.trim().isEmpty
+                                ? 'Required'
+                                : null,
                           ),
                           SizedBox(height: r.hp(1.8)),
                           Text(
@@ -206,9 +215,7 @@ class _MaterialRequestScreenState extends State<MaterialRequestScreen> {
                                 .map(
                                   (s) => DropdownMenuItem<String>(
                                     value: s.id,
-                                    child: Text(
-                                      s.name,
-                                    ),
+                                    child: Text(s.name),
                                   ),
                                 )
                                 .toList(),
@@ -245,16 +252,22 @@ class _MaterialRequestScreenState extends State<MaterialRequestScreen> {
                                   final reqMap = {
                                     'materialName': _selectedMaterialName,
                                     'unit': _selectedMaterialUnit ?? '',
-                                    'quantity': int.tryParse(
-                                            quantityController.text.trim()) ??
+                                    'quantity':
+                                        int.tryParse(
+                                          quantityController.text.trim(),
+                                        ) ??
                                         0,
                                     // Store total boxes separately; also
                                     // keep weight for backward compatibility
-                                    'boxes': int.tryParse(
-                                            weightController.text.trim()) ??
+                                    'boxes':
+                                        int.tryParse(
+                                          weightController.text.trim(),
+                                        ) ??
                                         0,
-                                    'weight': double.tryParse(
-                                            weightController.text.trim()) ??
+                                    'weight':
+                                        double.tryParse(
+                                          weightController.text.trim(),
+                                        ) ??
                                         0.0,
                                     // For supplier side we link by login email
                                     'supplierId':
@@ -265,7 +278,8 @@ class _MaterialRequestScreenState extends State<MaterialRequestScreen> {
                                   if (!mounted) return;
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
-                                        content: Text('Request Created')),
+                                      content: Text('Request Created'),
+                                    ),
                                   );
                                   _formKey.currentState!.reset();
                                   quantityController.clear();
@@ -280,7 +294,8 @@ class _MaterialRequestScreenState extends State<MaterialRequestScreen> {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content: Text(
-                                            'Failed to create request: $e'),
+                                          'Failed to create request: $e',
+                                        ),
                                       ),
                                     );
                                   }
@@ -325,8 +340,7 @@ class _MaterialRequestScreenState extends State<MaterialRequestScreen> {
                         final boxes =
                             (req['boxes'] ?? req['weight'])?.toString() ?? '0';
                         final unit = req['unit']?.toString() ?? '';
-                        final status =
-                            req['status']?.toString() ?? 'requested';
+                        final status = req['status']?.toString() ?? 'requested';
                         return Card(
                           color: AppColors.greyBackground,
                           margin: EdgeInsets.only(bottom: r.hp(1.2)),
@@ -349,7 +363,6 @@ class _MaterialRequestScreenState extends State<MaterialRequestScreen> {
                         );
                       },
                     ),
-                    
             ],
           ),
         ),

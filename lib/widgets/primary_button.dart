@@ -6,12 +6,14 @@ class PrimaryButton extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
   final bool loading;
+  final Color? color;
 
   const PrimaryButton({
     super.key,
     required this.label,
     required this.onTap,
     this.loading = false,
+    this.color,
   });
 
   @override

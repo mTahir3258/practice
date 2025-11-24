@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:inward_outward_management/providers/company_provider.dart';
 import 'package:inward_outward_management/utils/app_colors.dart';
 import 'package:inward_outward_management/utils/responsive.dart';
-import 'package:inward_outward_management/screens/company/material_billing_screen.dart';
 import 'package:provider/provider.dart';
 
 class InventoryScreen extends StatelessWidget {
@@ -92,17 +91,6 @@ class InventoryScreen extends StatelessWidget {
                             ),
                           ],
                         ),
-                        trailing: const Icon(
-                          Icons.chevron_right,
-                          color: AppColors.textLight,
-                        ),
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const MaterialBillingScreen(),
-                            ),
-                          );
-                        },
                       ),
                     );
                   },

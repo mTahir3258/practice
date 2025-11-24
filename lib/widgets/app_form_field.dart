@@ -3,20 +3,22 @@ import 'package:inward_outward_management/utils/app_colors.dart';
 
 class AppFormField extends StatelessWidget {
   final TextEditingController controller;
-  final String label;
+  final String? label;
   final bool isNumber;
   final String? hint;
   final String? Function(String?)? validator;
   final ValueChanged<String>? onChanged;
+  final String? suffixText;
 
   const AppFormField({
     super.key,
     required this.controller,
-    required this.label,
+    this.label,
     this.isNumber = false,
     this.hint,
     this.validator,
     this.onChanged,
+    this.suffixText,
   });
 
   @override
@@ -30,6 +32,8 @@ class AppFormField extends StatelessWidget {
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
+        suffixText: suffixText,
+        suffixStyle: const TextStyle(color: AppColors.textLight),
         labelStyle: const TextStyle(color: AppColors.textLight),
         hintStyle: const TextStyle(color: AppColors.textLight),
         filled: true,
@@ -40,7 +44,10 @@ class AppFormField extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.primaryGreen, width: 1.5),
+          borderSide: const BorderSide(
+            color: AppColors.primaryGreen,
+            width: 1.5,
+          ),
         ),
       ),
     );

@@ -3,6 +3,7 @@ import 'package:inward_outward_management/utils/app_colors.dart';
 import 'package:inward_outward_management/utils/responsive.dart';
 import 'package:inward_outward_management/widgets/app_scaffold.dart';
 import 'package:inward_outward_management/widgets/primary_button.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class CustomerPaymentScreen extends StatelessWidget {
   final String customerName;
@@ -215,29 +216,50 @@ class CustomerPaymentScreen extends StatelessWidget {
                       r,
                       icon: Icons.credit_card,
                       label: 'Credit/Debit Card',
+                      onTap: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Credit/Debit card payments are not implemented yet. Please use UPI.',
+                            ),
+                          ),
+                        );
+                      },
                     ),
                     _paymentOptionTile(
                       context,
                       r,
                       icon: Icons.qr_code_2,
                       label: 'UPI',
+                      onTap: () => _startUpiPayment(
+                        context,
+                        amount,
+                        invoiceNumber,
+                      ),
                     ),
                     _paymentOptionTile(
                       context,
                       r,
                       icon: Icons.account_balance,
                       label: 'Net Banking',
+                      onTap: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Net banking is not implemented yet. Please use UPI.',
+                            ),
+                          ),
+                        );
+                      },
                     ),
                     SizedBox(height: r.hp(3)),
                     PrimaryButton(
                       label: 'Pay Now',
-                      onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Payment flow not implemented'),
-                          ),
-                        );
-                      },
+                      onTap: () => _startUpiPayment(
+                        context,
+                        amount,
+                        invoiceNumber,
+                      ),
                     ),
                   ],
                 ),
@@ -248,14 +270,58 @@ class CustomerPaymentScreen extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _paymentOptionTile(
-    BuildContext context,
-    Responsive r, {
-    required IconData icon,
-    required String label,
-  }) {
-    return Container(
+Future<void> _startUpiPayment(
+  BuildContext context,
+  double amount,
+  String invoiceNumber,
+) async {
+  // UPI ID configured for customer payments.
+  const String upiId = '8888685582@ybl';
+  const String payeeName = 'Your Company';
+
+  final String note = 'Invoice $invoiceNumber';
+  final String amountParam = amount.toStringAsFixed(2);
+
+  final uri = Uri.parse(
+    'upi://pay?pa=$upiId&pn=${Uri.encodeComponent(payeeName)}&tn=${Uri.encodeComponent(note)}&am=$amountParam&cu=INR',
+  );
+
+  if (!await canLaunchUrl(uri)) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('No UPI app found to handle the payment'),
+      ),
+    );
+    return;
+  }
+
+  try {
+    await launchUrl(
+      uri,
+      mode: LaunchMode.externalApplication,
+    );
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Failed to start UPI payment: $e'),
+      ),
+    );
+  }
+}
+
+Widget _paymentOptionTile(
+  BuildContext context,
+  Responsive r, {
+  required IconData icon,
+  required String label,
+  VoidCallback? onTap,
+}) {
+  return InkWell(
+    borderRadius: BorderRadius.circular(12),
+    onTap: onTap,
+    child: Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: EdgeInsets.symmetric(
         horizontal: r.wp(3),
@@ -285,6 +351,6 @@ class CustomerPaymentScreen extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
 }
